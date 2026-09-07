@@ -40,11 +40,12 @@ class MainActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         ivInfoIcon = findViewById(R.id.ivInfoIcon)
 
-        btnLedOn.setOnClickListener { sendCommand("LED_ON") }
-        btnLedOff.setOnClickListener { sendCommand("LED_OFF") }
+        // 傳入布林值：true 代表開燈，false 代表關燈
+        btnLedOn.setOnClickListener { sendCommand(true) }
+        btnLedOff.setOnClickListener { sendCommand(false) }
     }
 
-    private fun sendCommand(command: String) {
+    private fun sendCommand(turnOn: Boolean) {
         val ipAddress = etIpAddress.text?.toString()?.trim().orEmpty()
         val portNumber = etPortNumber.text?.toString()?.trim().orEmpty()
 
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val port = portNumber.toIntOrNull() ?: 5000
+        val actionText = if (turnOn) "開燈" else "關燈"
         setSendingState(true, "正在連線至 $ipAddress:$port ...")
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -64,11 +66,14 @@ class MainActivity : AppCompatActivity() {
                 socket.connect(InetSocketAddress(ipAddress, port), 3000)
 
                 outputStream = socket.getOutputStream()
-                outputStream.write(command.toByteArray(Charsets.UTF_8))
+
+                // 發送單個位元組：true -> 0x01, false -> 0x00
+                val payload = byteArrayOf(if (turnOn) 1 else 0)
+                outputStream.write(payload)
                 outputStream.flush()
 
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "指令 [$command] 已成功送出"
+                    tvStatus.text = "指令 [$actionText] 已成功送出"
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
